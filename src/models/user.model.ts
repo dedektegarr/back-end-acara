@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { encrypt } from "../utils/encryption";
 
 export interface User {
   fullName: string;
@@ -44,12 +45,24 @@ const UserSchema = new Schema<User>(
     },
     activationCode: {
       type: Schema.Types.String,
+      default: null,
     },
   },
   {
     timestamps: true,
   }
 );
+
+UserSchema.pre("save", function (next) {
+  this.password = encrypt(this.password);
+  next();
+});
+
+UserSchema.methods.toJSON = function () {
+  const user = this.toObject();
+  delete user.password;
+  return user;
+};
 
 const UserModel = mongoose.model("users", UserSchema);
 export default UserModel;
