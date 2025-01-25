@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import * as Yup from "yup";
 import UserModel from "../models/user.model";
 import { encrypt } from "../utils/encryption";
+import { generateToken } from "../utils/jwt";
 
 type TRegister = {
   fullName: string;
@@ -61,7 +62,7 @@ export default {
     }
   },
 
-  async login(req: Request, res: Response): Promise<any> {
+  async login(req: Request, res: Response): Promise<void> {
     const { identifier, password } = req.body as TLogin;
 
     try {
@@ -70,25 +71,51 @@ export default {
       });
 
       if (!userByIdentifier) {
-        return res.status(403).json({
+        res.status(403).json({
           message: "User not found",
           data: null,
         });
+        return;
       }
 
       const validatePassword: boolean =
         encrypt(password) === userByIdentifier.password;
 
       if (!validatePassword) {
-        return res.status(403).json({
+        res.status(403).json({
           message: "User not found",
           data: null,
         });
+        return;
       }
+
+      // generate token
+      const token = generateToken({
+        id: userByIdentifier._id,
+        role: userByIdentifier.role,
+      });
 
       res.status(200).json({
         message: "Login success",
-        data: userByIdentifier,
+        data: { token },
+      });
+    } catch (error) {
+      const err = error as Error;
+
+      res.status(400).json({
+        message: err.message,
+        data: null,
+      });
+    }
+  },
+
+  async user(req: Request, res: Response): Promise<void> {
+    try {
+      const user = await UserModel.findById(req.user?.id);
+
+      res.status(200).json({
+        message: "Success get user profile",
+        data: user,
       });
     } catch (error) {
       const err = error as Error;
