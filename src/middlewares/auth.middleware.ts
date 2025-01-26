@@ -36,18 +36,18 @@ export default (req: Request, res: Response, next: NextFunction): void => {
     return;
   }
 
-  const user = getUserData(token);
+  const result = getUserData(token);
 
-  if (!user) {
+  if (result.status === "error") {
     res.status(403).json({
-      message: "Unauthorized!",
+      message: result.message,
       data: null,
     });
 
     return;
   }
 
-  req.user = user;
+  req.user = result.data;
 
   next();
 };

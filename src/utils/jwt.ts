@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import type { User } from "../models/user.model";
-import jwt from "jsonwebtoken";
+import jwt, { JsonWebTokenError, TokenExpiredError } from "jsonwebtoken";
 import { SECRET } from "./env";
 
 export interface IUserToken
@@ -23,6 +23,11 @@ export const generateToken = (user: IUserToken): string => {
 };
 
 export const getUserData = (token: string) => {
-  const user = jwt.verify(token, SECRET) as IUserToken;
-  return user;
+  try {
+    const user = jwt.verify(token, SECRET) as IUserToken as any;
+    return { status: "success", data: user };
+  } catch (error) {
+    const err = error as Error;
+    return { status: "error", message: err.message };
+  }
 };
