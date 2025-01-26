@@ -16,8 +16,8 @@ const init = async () => {
     app.use(cors());
     app.use(bodyParser.json());
 
-    app.use("/api", router);
     docs(app);
+    app.use("/api", router);
 
     app.listen(PORT, () => {
       console.log(`Server is running on http://localhost:${PORT}`);
