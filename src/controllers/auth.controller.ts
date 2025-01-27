@@ -19,9 +19,37 @@ type TLogin = {
 
 const registerValidateSchema = Yup.object({
   fullName: Yup.string().required(),
-  username: Yup.string().required(),
-  email: Yup.string().email().required(),
-  password: Yup.string().required(),
+  username: Yup.string()
+    .required()
+    .test("is-unique", "Username has already taken", async (value) => {
+      const isTaken = await UserModel.findOne({ username: value });
+      return !isTaken;
+    }),
+  email: Yup.string()
+    .email()
+    .required()
+    .test("is-unique", "Email has already taken", async (value) => {
+      const isTaken = await UserModel.findOne({ email: value });
+      return !isTaken;
+    }),
+  password: Yup.string()
+    .required()
+    .min(6, "Password must be at least 6 characters")
+    .test(
+      "at-least-one-uppercase-letter",
+      "Contains at least one uppercase letter",
+      (value) => {
+        if (!value) return false;
+        const regex = /^(?=.*[A-Z])/;
+        return regex.test(value);
+      }
+    )
+    .test("at-least-one-number", "Contains at least one number", (value) => {
+      if (!value) return false;
+      const regex = /^(?=.*\d)/;
+      return regex.test(value);
+    }),
+
   confirmPassword: Yup.string()
     .required()
     .oneOf([Yup.ref("password"), ""], "Password not match"),
@@ -81,6 +109,7 @@ export default {
     try {
       const userByIdentifier = await UserModel.findOne({
         $or: [{ email: identifier }, { username: identifier }],
+        isActive: true,
       });
 
       if (!userByIdentifier) {
@@ -135,6 +164,47 @@ export default {
 
       res.status(200).json({
         message: "Success get user profile",
+        data: user,
+      });
+    } catch (error) {
+      const err = error as Error;
+
+      res.status(400).json({
+        message: err.message,
+        data: null,
+      });
+    }
+  },
+
+  async activation(req: Request, res: Response) {
+    /**
+      #swagger.tags = ["Auth"]
+    */
+
+    const { code } = req.body as { code: string };
+
+    try {
+      const user = await UserModel.findOneAndUpdate(
+        {
+          activationCode: code,
+        },
+        {
+          isActive: true,
+        },
+        { new: true }
+      );
+
+      if (!user) {
+        res.status(400).json({
+          message: "User activation failed",
+          data: null,
+        });
+
+        return;
+      }
+
+      res.status(200).json({
+        message: "User activation success!",
         data: user,
       });
     } catch (error) {
